@@ -1,0 +1,166 @@
+---
+- name: OVN setup for network nodes
+  hosts: cloud_network
+  become: true
+  tasks:
+
+    ## THESE tasks are done once and maybe better to do them manually
+    # - name: Stop neutron agents
+    #   ansible.builtin.service:
+    #     name: "{{ item }}"
+    #     state: stopped
+    #     enabled: false
+    #   ignore_errors: true
+    #   loop:
+    #     - "neutron-openvswitch-agent"
+    #     - "neutron-dhcp-agent"
+    #     - "neutron-l3-agent"
+    #     - "neutron-metadata-agent"
+    #     - "neutron-ovs-cleanup"
+
+    - name: Restart ovn host
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - "ovn-host"
+        - "openvswitch-switch"
+
+    - name: Set CMS Options for Gateway Scheduling
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-cms-options=enable-chassis-as-gw"
+
+    - name: Configure OVN Southbound Connection
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-remote=tcp:IP1:6642,tcp:IP2:6642,tcp:IP3:6642"
+
+    - name: Configure Supported OVN Overlay Protocols
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-encap-type=geneve"
+
+    - name: Configure Encapsulation Address for Overlay Traffic
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-encap-ip={{ node_ip }}"
+
+    - name: Setup Network Provider Bridges
+      openvswitch.openvswitch.openvswitch_bridge:
+        bridge: "{{ bridge_mapping.split(':')[1] }}"
+        fail_mode: secure
+        state: present
+      with_items: "{{ neutron_net_ovs_bridge_mappings.split(',') }}"
+      loop_control:
+        loop_var: bridge_mapping
+
+    - name: Set the OVN Bridge Mappings in OVS
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-bridge-mappings=external:br-ex"
+
+    # - name: Delete ports br-int patch-tun
+    #   ansible.builtin.command: "ovs-vsctl --if-exists del-port br-int patch-tun"
+
+    - name: Set OVSDB Manager
+      ansible.builtin.command: "ovs-vsctl set-manager ptcp:6640:127.0.0.1"
+
+    # - name: Check if br-tun exists.
+    #   ansible.builtin.command: "ovs-vsctl br-exists br-tun"
+    #   register: check_brtun
+    #   ignore_errors: true
+
+    # - name: Delete br-tun as it is no longer used.
+    #   ansible.builtin.command: "ovs-vsctl del-br br-tun"
+    #   when: check_brtun.rc == 0
+
+    # - name: Reset OpenFlow protocol version before ovn-controller takes over.
+    #   with_items: [br-int, br-ex, br-vlan]
+    #   ansible.builtin.command: "ovs-vsctl set Bridge {{ item }} protocols=[]"
+
+    # - name: Delete network namespaces.
+    #   ansible.builtin.command: ip -all netns delete
+    #   ignore_errors: true
+
+    - name: Restart ovn host
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - "ovn-host"
+        - "openvswitch-switch"
+
+- name: OVN setup for compute nodes
+  hosts: cloud_compute
+  become: true
+  tasks:
+
+    # - name: Stop neutron agents
+    #   ansible.builtin.service:
+    #     name: "{{ item }}"
+    #     state: stopped
+    #     enabled: false
+    #   ignore_errors: true
+    #   loop:
+    #     - "neutron-openvswitch-agent"
+    #     - "neutron-ovs-cleanup"
+    #     - "neutron-sriov-agent"
+
+    - name: Restart ovn host
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - "ovn-host"
+        - "neutron-ovn-metadata-agent"
+        - "nova-compute"
+        - "openvswitch-switch"
+
+    - name: Configure OVN Southbound Connection
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-remote={{ neutron_ovn_sb_connection }}"
+
+    - name: Configure Supported OVN Overlay Protocols
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-encap-type={{ neutron_ovn_encap_type }}"
+
+    - name: Configure Encapsulation Address for Overlay Traffic
+      ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-encap-ip={{ node_ip }}"
+
+    - name: Set OVSDB Manager
+      ansible.builtin.command: "ovs-vsctl set-manager ptcp:6640:127.0.0.1"
+
+#################################################################################################
+    # - name: Set OVSDB Controller br-int
+    #   ansible.builtin.command: "ovs-vsctl set-controller br-int tcp:127.0.0.1:6653"
+
+    # - name: Set OVSDB Controller br-vlan
+    #   ansible.builtin.command: "ovs-vsctl set-controller br-vlan tcp:127.0.0.1"
+#################################################################################################
+
+    # - name: Set CMS Options for external ports - SRIOV
+    #   ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-cms-options=enable-chassis-as-extport-host"
+
+    # - name: Setup Network Provider Bridges
+    #   openvswitch.openvswitch.openvswitch_bridge:
+    #     bridge: "{{ bridge_mapping.split(':')[1] }}"
+    #     fail_mode: secure
+    #     state: present
+    #   with_items: "{{ neutron_comp_ovs_bridge_mappings.split(',') }}"
+    #   loop_control:
+    #     loop_var: bridge_mapping
+
+    # - name: Set the OVN Bridge Mappings in OVS
+    #   ansible.builtin.command: "ovs-vsctl set open . external-ids:ovn-bridge-mappings={{ neutron_comp_ovs_bridge_mappings }}"
+
+    # - name: Delete br-tun as it is no longer used.
+    #   ansible.builtin.command: "ovs-vsctl del-br br-tun"
+    #   ignore_errors: true
+
+    # - name: Delete ports br-int patch-tun
+    #   ansible.builtin.command: "ovs-vsctl --if-exists del-port br-int patch-tun"
+    #   ignore_errors: true
+
+    # - name: Reset OpenFlow protocol version before ovn-controller takes over.
+    #   with_items: [br-int, br-vlan]
+    #   ansible.builtin.command: "ovs-vsctl set Bridge {{ item }} protocols=[]"
+    #   ignore_errors: true
+
+    - name: Restart ovn host
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - "ovn-host"
+        - "neutron-ovn-metadata-agent"
+        - "nova-compute"
+        - "openvswitch-switch"

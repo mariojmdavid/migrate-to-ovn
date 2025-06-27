@@ -1,0 +1,56 @@
+---
+- name: Install controller hosts
+  hosts: cloud_controllers
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        pkg:
+          - neutron-server
+          - neutron-plugin-ml2
+          - ovn-central
+          - python3-neutron
+
+- name: Install compute hosts
+  hosts: cloud_compute
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        pkg:
+          - bridge-utils
+          - conntrack
+          - dnsmasq
+          - dnsmasq-utils
+          - iproute2
+          - ipset
+          - iptables
+          - iputils-arping
+          - iputils-ping
+          - net-tools
+          - neutron-ovn-metadata-agent
+          - openvswitch-common
+          - openvswitch-switch
+          - ovn-host
+          - python3-openvswitch
+          - vlan
+
+- name: Install network hosts
+  hosts: cloud_network
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        pkg:
+          - bridge-utils
+          - conntrack
+          - dnsmasq
+          - dnsmasq-utils
+          - iproute2
+          - ipset
+          - iptables
+          - iputils-arping
+          - iputils-ping
+          - net-tools
+          - openvswitch-common
+          - openvswitch-switch
+          - ovn-host
+          - python3-openvswitch
+          - vlan

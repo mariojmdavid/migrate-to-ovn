@@ -1,0 +1,45 @@
+---
+- name: OVN setup for Controllers
+  hosts: cloud_controllers
+  tasks:
+
+    # We need to clean existing ovn db/lock file before cluster join.
+    - name: Clean up db/lock files before creating ovn cluster
+      block:
+        - name: Stop ovn services
+          ansible.builtin.service:
+            name: "ovn-central"
+            state: stopped
+
+        - name: Clean up ovn db directory
+          ansible.builtin.file:
+            path: /var/lib/ovn/
+            state: absent
+
+    - name: Start ovn service
+      ansible.builtin.service:
+        name: "ovn-central"
+        state: restarted
+
+    - name: Configure connection settings for ovn-nb and ovn-sb
+      ansible.builtin.command: "{{ cmd }}"
+      changed_when: false
+      with_items:
+        - "ovn-nbctl --inactivity-probe=60000 set-connection ptcp:6641:{{ node_ip }}"
+        - "ovn-sbctl --inactivity-probe=60000 set-connection ptcp:6642:{{ node_ip }}"
+      loop_control:
+        loop_var: cmd
+
+    # - name: Perform a DB for ovn -- THIS MAYBE BETTER TO DO MANUALLY -- 
+    #   ansible.builtin.command: "neutron-ovn-db-sync-util --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini --log-file /var/log/neutron/neutron-db-sync.log --ovn-neutron_sync_mode migrate --debug"
+    #   changed_when: false
+    #   when:
+    #     - leader_node
+
+    - name: Restart ovn central and neutron-server
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - "ovn-central"
+        - "neutron-server"

@@ -1,0 +1,2 @@
+export OVN_NB_DB="tcp:IP1:6641,tcp:IP2:6641,tcp:IP3:6641"
+export OVN_SB_DB="tcp:IP1:6642,tcp:IP2:6642,tcp:IP3:6642"

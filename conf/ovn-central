@@ -1,0 +1,11 @@
+# OVN cluster parameters
+OVN_CTL_OPTS=" \
+  --db-nb-addr=myip \
+  --db-sb-addr=myip \
+  --db-nb-cluster-local-addr=myip \
+  --db-sb-cluster-local-addr=myip \
+  --db-nb-create-insecure-remote=yes \
+  --db-sb-create-insecure-remote=yes \
+  --ovn-northd-nb-db=tcp:IP1:6641,tcp:IP2:6641,tcp:IP3:6641 \
+  --ovn-northd-sb-db=tcp:IP1:6642,tcp:IP2:6642,tcp:IP3:6642
+"

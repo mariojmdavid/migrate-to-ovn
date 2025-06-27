@@ -1,0 +1,62 @@
+---
+- name: Configuration for Controllers
+  hosts: cloud_controllers
+  tasks:
+
+    - name: Copy ovn plugins filters
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+        owner: 'root'
+        group: 'root'
+        backup: true
+      with_items:
+        - { src: 'ovn-plugin.filters', dest: '/etc/neutron/rootwrap.d/ovn-plugin.filters' }
+
+    - name: Copy conf templates
+      ansible.builtin.template:
+        src: '{{ item.src }}'
+        dest: '{{ item.dst }}'
+        group: '{{ item.grp }}'
+        owner: '{{ item.usr }}'
+        mode: '{{ item.mode }}'
+        backup: true
+      loop:
+        - { src: 'ml2_conf.ini.j2', dst: '/etc/neutron/plugins/ml2/ml2_conf.ini', grp: 'neutron', usr: 'root', mode: '0644' }
+        - { src: 'neutron.conf.j2', dst: '/etc/neutron/neutron.conf', grp: 'neutron', usr: 'root', mode: '0644' }
+        - { src: 'nova.conf.j2', dst: '/etc/nova/nova.conf', grp: 'nova', usr: 'root', mode: '0644' }
+        - { src: 'ovn-central.j2', dst: '/etc/default/ovn-central', grp: 'root', usr: 'root', mode: '0644' }
+        - { src: 'ovn-cli-options.j2', dst: '/root/ovnctl.rc', grp: 'root', usr: 'root', mode: '0640' }
+
+- name: Configuration for compute nodes
+  hosts: cloud_compute
+  tasks:
+    - name: Copy conf templates
+      ansible.builtin.template:
+        src: '{{ item.src }}'
+        dest: '{{ item.dst }}'
+        group: '{{ item.grp }}'
+        owner: '{{ item.usr }}'
+        mode: '{{ item.mode }}'
+        backup: true
+      loop:
+        - { src: 'neutron.conf.j2', dst: '/etc/neutron/neutron.conf', grp: 'neutron', usr: 'root', mode: '0644' }
+        - { src: 'neutron_ovn_metadata_agent.ini.j2', dst: '/etc/neutron/neutron_ovn_metadata_agent.ini', grp: 'neutron', usr: 'root', mode: '0644' }
+        - { src: 'nova.conf.j2', dst: '/etc/nova/nova.conf', grp: 'nova', usr: 'root', mode: '0644' }
+        - { src: 'ovn-cli-options.j2', dst: '/root/ovnctl.rc', grp: 'root', usr: 'root', mode: '0640' }
+
+- name: Configuration for network nodes
+  hosts: cloud_network
+  become: true
+  tasks:
+    - name: Copy conf templates
+      ansible.builtin.template:
+        src: '{{ item.src }}'
+        dest: '{{ item.dst }}'
+        group: '{{ item.grp }}'
+        owner: '{{ item.usr }}'
+        mode: '{{ item.mode }}'
+        backup: true
+      loop:
+        - { src: 'ovn-cli-options.j2', dst: '/root/ovnctl.rc', grp: 'root', usr: 'root', mode: '0640' }
